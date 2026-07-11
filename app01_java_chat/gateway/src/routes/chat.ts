@@ -114,6 +114,11 @@ chatRouter.post('/api/v1/chat', requireAuth, async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
+  // CONTRACT.md §2: the `session` event is Gateway-only and MUST be the
+  // first frame of every response — it's the only way the caller learns a
+  // newly-assigned sessionId (the Orchestrator never sees/creates sessions).
+  res.write(`data: ${JSON.stringify({ type: 'session', sessionId })}\n\n`);
+
   let finalFixContent: string | null = null;
   let buffer = '';
 

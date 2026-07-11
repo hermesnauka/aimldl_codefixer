@@ -41,6 +41,20 @@ export default function Chat({ onLogout }: ChatProps) {
     listEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [timeline, events]);
 
+  // CONTRACT.md §2: `session` is always the first frame of every response
+  // and carries the sessionId the Gateway assigned (new or reused) — this is
+  // the only way we learn it when the very first turn was sent with
+  // sessionId: null.
+  useEffect(() => {
+    const sessionEvent = events.find(
+      (e): e is Extract<ChatStreamEvent, { type: "session" }> =>
+        e.type === "session",
+    );
+    if (sessionEvent && sessionEvent.sessionId !== sessionId) {
+      setSessionId(sessionEvent.sessionId);
+    }
+  }, [events, sessionId]);
+
   const reasoningText = useMemo(
     () =>
       events
@@ -96,11 +110,6 @@ export default function Chat({ onLogout }: ChatProps) {
       errorLog: errorLog || undefined,
     });
   }
-
-  // CONTRACT.md's SSE event shapes never echo the sessionId the Gateway
-  // assigned back to the frontend, so sessionId stays client-managed here:
-  // null means "let the Gateway create one" for the very first turn, and
-  // "New session" (above) resets it back to null to start a fresh thread.
 
   return (
     <div className="app-shell">

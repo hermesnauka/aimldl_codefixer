@@ -63,6 +63,14 @@ export type AgentStage =
   | "self_correcting"
   | "finalizing";
 
+// Gateway-only — always the first frame of every /api/v1/chat SSE response.
+// The only way the frontend learns a newly-assigned sessionId; see
+// CONTRACT.md section 2.
+export interface SessionEvent {
+  type: "session";
+  sessionId: string;
+}
+
 export interface StatusEvent {
   type: "status";
   stage: AgentStage;
@@ -107,6 +115,7 @@ export interface DoneEvent {
 }
 
 export type ChatStreamEvent =
+  | SessionEvent
   | StatusEvent
   | ReasoningTokenEvent
   | ProviderFailoverEvent

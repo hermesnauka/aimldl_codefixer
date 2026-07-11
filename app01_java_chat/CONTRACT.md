@@ -55,7 +55,15 @@ Response `200`: `{ "status": "UP" }`
 ## 2. SSE Event Shapes (Gateway → Frontend, and Orchestrator → Gateway — same shape, Gateway
 just re-frames Orchestrator's stream as SSE if Orchestrator itself emits newline-delimited JSON)
 
+**`session` is Gateway-only** — the Orchestrator never emits it (it doesn't create sessions).
+The Gateway MUST emit exactly one `session` event, as the very first frame of every
+`POST /api/v1/chat` SSE response, before proxying any of the Orchestrator's own events. This is
+the only way the frontend learns the session id the Gateway assigned when the request's
+`sessionId` was `null` — without it, a client has no way to address follow-up turns or
+`GET /api/v1/chat/:sessionId/history` at the same conversation.
+
 ```json
+{"type": "session", "sessionId": "uuid, always present, whether newly created or reused"}
 {"type": "status", "stage": "routing" | "reasoning" | "executing" | "self_correcting" | "finalizing"}
 {"type": "reasoning_token", "token": "string, one incremental token of Chain-of-Thought"}
 {"type": "provider_failover", "from": "openrouter/hermes-3", "to": "openai/codex", "reason": "string"}
