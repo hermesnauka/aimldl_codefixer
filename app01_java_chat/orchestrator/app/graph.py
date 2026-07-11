@@ -18,15 +18,24 @@ This keeps the graph itself a real, declarative StateGraph (nodes only
 compute state transitions) while still supporting true incremental
 streaming, which a bare `astream()` over graph steps cannot provide at
 token granularity.
+
+Implementation note (LangGraph 1.x): node functions receive the
+`RunnableConfig` only if a parameter is literally named `config` (LangGraph
+inspects the function signature by parameter name, not position) — so every
+node below takes `(state, config)`, not `(state, config_)`. To keep that
+name free, `app/config.py` (env var settings) is imported here under the
+alias `app_config`.
 """
 from __future__ import annotations
 
 import logging
 from typing import Any, Optional, TypedDict
 
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph
 
-from app import bridge_client, config, worker_client
+from app import bridge_client, worker_client
+from app import config as app_config
 from app.agents import router_agent
 from app.agents.reasoning_agent import run_reasoning, safe_json_preview
 from app.llm.failover import FailoverSession
@@ -73,8 +82,8 @@ class GraphState(TypedDict, total=False):
     failover_session: Any
 
 
-async def _emit(config_: dict, event: dict) -> None:
-    queue = config_.get("configurable", {}).get("event_queue")
+async def _emit(config: RunnableConfig, event: dict) -> None:
+    queue = config.get("configurable", {}).get("event_queue")
     if queue is not None:
         await queue.put(event)
 
@@ -94,8 +103,8 @@ def _build_execution_failure_context(execution_result: dict) -> str:
     )
 
 
-async def router_node(state: GraphState, config_: dict) -> dict:
-    await _emit(config_, {"type": "status", "stage": "routing"})
+async def router_node(state: GraphState, config: RunnableConfig) -> dict:
+    await _emit(config, {"type": "status", "stage": "routing"})
     language = router_agent.detect_language(
         code=state.get("code"),
         error_log=state.get("error_log"),
@@ -104,16 +113,16 @@ async def router_node(state: GraphState, config_: dict) -> dict:
     return {"language": language}
 
 
-async def reasoning_node(state: GraphState, config_: dict) -> dict:
-    await _emit(config_, {"type": "status", "stage": "reasoning"})
+async def reasoning_node(state: GraphState, config: RunnableConfig) -> dict:
+    await _emit(config, {"type": "status", "stage": "reasoning"})
 
     failover_session: FailoverSession = state["failover_session"]
 
     async def on_reasoning_token(token: str) -> None:
-        await _emit(config_, {"type": "reasoning_token", "token": token})
+        await _emit(config, {"type": "reasoning_token", "token": token})
 
     async def on_event(event: dict) -> None:
-        await _emit(config_, event)
+        await _emit(config, event)
 
     outcome = await run_reasoning(
         failover_session=failover_session,
@@ -138,8 +147,8 @@ async def reasoning_node(state: GraphState, config_: dict) -> dict:
     }
 
 
-async def execute_node(state: GraphState, config_: dict) -> dict:
-    await _emit(config_, {"type": "status", "stage": "executing"})
+async def execute_node(state: GraphState, config: RunnableConfig) -> dict:
+    await _emit(config, {"type": "status", "stage": "executing"})
 
     language = state.get("language") or "python"
     fix_code = state.get("fix_code")
@@ -168,7 +177,7 @@ async def execute_node(state: GraphState, config_: dict) -> dict:
         )
     except worker_client.WorkerCallError as exc:
         logger.error("Worker call failed: %s", exc)
-        await _emit(config_, {"type": "error", "message": f"Worker call failed: {exc}"})
+        await _emit(config, {"type": "error", "message": f"Worker call failed: {exc}"})
         execution_result = {
             "exitCode": None,
             "stdout": "",
@@ -178,7 +187,7 @@ async def execute_node(state: GraphState, config_: dict) -> dict:
         }
 
     await _emit(
-        config_,
+        config,
         {
             "type": "execution_result",
             "language": language,
@@ -201,16 +210,15 @@ async def execute_node(state: GraphState, config_: dict) -> dict:
     return result
 
 
-async def finalize_node(state: GraphState, config_: dict) -> dict:
-    await _emit(config_, {"type": "status", "stage": "finalizing"})
+async def finalize_node(state: GraphState, config: RunnableConfig) -> dict:
+    await _emit(config, {"type": "status", "stage": "finalizing"})
 
     fix_code = state.get("fix_code")
-    execution_result = state.get("execution_result")
     still_failed = state.get("failed", False)
 
     if fix_code and not still_failed:
         await _emit(
-            config_,
+            config,
             {
                 "type": "final_fix",
                 "code": fix_code,
@@ -226,7 +234,7 @@ async def finalize_node(state: GraphState, config_: dict) -> dict:
         # emitting nothing. This favors giving the user *something* over a
         # bare error when a fix exists but couldn't be verified in time.
         await _emit(
-            config_,
+            config,
             {
                 "type": "final_fix",
                 "code": fix_code,
@@ -241,7 +249,7 @@ async def finalize_node(state: GraphState, config_: dict) -> dict:
         return {}
 
     await _emit(
-        config_,
+        config,
         {
             "type": "error",
             "message": state.get("error_message")
@@ -255,12 +263,12 @@ def _route_after_execute(state: GraphState) -> str:
     failed = state.get("failed", False)
     retry_count = state.get("retry_count", 0)
 
-    if failed and retry_count < config.MAX_RETRY_COUNT:
+    if failed and retry_count < app_config.MAX_RETRY_COUNT:
         return "retry"
     return "finalize"
 
 
-async def _increment_retry_and_record_failure(state: GraphState, config_: dict) -> dict:
+async def _increment_retry_and_record_failure(state: GraphState, config: RunnableConfig) -> dict:
     """Edge-adjacent state update: bump retry_count and stash a summary of
     what failed into prior_failures, so the next reasoning_node call has
     context (§2.2: "feeds back into the Reasoning Agent ... if errors
@@ -268,7 +276,7 @@ async def _increment_retry_and_record_failure(state: GraphState, config_: dict) 
     conditional-edge function) since conditional-edge functions in LangGraph
     only choose the next node name — they don't mutate state themselves.
     """
-    await _emit(config_, {"type": "status", "stage": "self_correcting"})
+    await _emit(config, {"type": "status", "stage": "self_correcting"})
 
     prior_failures = list(state.get("prior_failures", []))
     execution_result = state.get("execution_result")

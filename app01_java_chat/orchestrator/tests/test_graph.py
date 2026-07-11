@@ -307,3 +307,96 @@ def test_router_ignores_invalid_hint_and_falls_back_to_heuristics():
         router_agent.detect_language(code=code, error_log=None, language_hint="not-a-real-language")
         == "javascript"
     )
+
+
+# ---------------------------------------------------------------------------
+# 4. End-to-end: the real compiled StateGraph, driven via app.main's own
+#    streaming generator, with only the LLM/worker/bridge/DB boundaries
+#    mocked. Exercises router -> reasoning -> execute -> finalize AND the
+#    execute -> self_correct -> reasoning retry loop, through the actual
+#    FastAPI request-handling code path, not a reimplementation.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_analyze_stream_happy_path(monkeypatch, _reset_db_calls):
+    from app import worker_client
+    from app.llm.failover import FailoverSession
+    from app.main import AnalyzeRequest, _run_analyze_stream
+
+    async def fake_stream(self, *, system_prompt, user_prompt, on_event=None):
+        yield (
+            "===FINAL_FIX===\nprint('fixed')\n===EXPLANATION===\n"
+            "Added missing parenthesis.\n===END===\n"
+        )
+
+    async def fake_execute(*, session_id, language, code, test_command=None):
+        return {"exitCode": 0, "stdout": "fixed\n", "stderr": "", "timedOut": False, "durationMs": 5}
+
+    monkeypatch.setattr(FailoverSession, "stream", fake_stream)
+    monkeypatch.setattr(worker_client, "execute", fake_execute)
+
+    request = AnalyzeRequest(
+        sessionId="55555555-5555-5555-5555-555555555555",
+        userId="66666666-6666-6666-6666-666666666666",
+        language="python",
+        errorLog="SyntaxError: unexpected EOF",
+        code="print('broken'",
+    )
+
+    events = [__import__("json").loads(line) async for line in _run_analyze_stream(request)]
+    types = [e["type"] for e in events]
+
+    assert types[0] == "status" and events[0]["stage"] == "routing"
+    assert "final_fix" in types
+    assert types[-1] == "done"
+    final = next(e for e in events if e["type"] == "final_fix")
+    assert final["code"] == "print('fixed')"
+
+
+@pytest.mark.asyncio
+async def test_analyze_stream_self_correction_loop(monkeypatch, _reset_db_calls):
+    from app import worker_client
+    from app.llm.failover import FailoverSession
+    from app.main import AnalyzeRequest, _run_analyze_stream
+
+    attempt = {"n": 0}
+
+    async def fake_stream(self, *, system_prompt, user_prompt, on_event=None):
+        attempt["n"] += 1
+        yield (
+            f"===FINAL_FIX===\nprint('attempt {attempt['n']}')\n"
+            f"===EXPLANATION===\nAttempt {attempt['n']}.\n===END===\n"
+        )
+
+    exec_calls = {"n": 0}
+
+    async def fake_execute(*, session_id, language, code, test_command=None):
+        exec_calls["n"] += 1
+        if exec_calls["n"] == 1:
+            return {"exitCode": 1, "stdout": "", "stderr": "NameError", "timedOut": False, "durationMs": 10}
+        return {"exitCode": 0, "stdout": "ok\n", "stderr": "", "timedOut": False, "durationMs": 20}
+
+    monkeypatch.setattr(FailoverSession, "stream", fake_stream)
+    monkeypatch.setattr(worker_client, "execute", fake_execute)
+
+    request = AnalyzeRequest(
+        sessionId="77777777-7777-7777-7777-777777777777",
+        userId="88888888-8888-8888-8888-888888888888",
+        language="python",
+        errorLog=None,
+        code="print(undefined_var)",
+    )
+
+    events = [__import__("json").loads(line) async for line in _run_analyze_stream(request)]
+
+    stages = [e.get("stage") for e in events if e["type"] == "status"]
+    assert "self_correcting" in stages
+
+    exec_results = [e for e in events if e["type"] == "execution_result"]
+    assert [r["exitCode"] for r in exec_results] == [1, 0]
+
+    final = [e for e in events if e["type"] == "final_fix"]
+    assert len(final) == 1
+    assert "attempt 2" in final[0]["code"]
+    assert events[-1]["type"] == "done"
