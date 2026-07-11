@@ -1,0 +1,96 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-codefixer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codefixer}
+      POSTGRES_DB: ${POSTGRES_DB:-codefixer}
+    volumes:
+      - codefixer_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-codefixer}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  db-init:
+    image: postgres:16
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./db/migrations:/migrations:ro
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-codefixer}
+    entrypoint: >
+      sh -c "psql -h postgres -U ${POSTGRES_USER:-codefixer} -d ${POSTGRES_DB:-codefixer}
+      -f /migrations/001_init.sql"
+    restart: "no"
+
+  integration-bridge:
+    build: ./integration-bridge
+    environment:
+      SERVER_PORT: ${BRIDGE_PORT:-8080}
+    ports:
+      - "8080:8080"
+
+  worker:
+    build: ./worker
+    environment:
+      WORKER_PORT: ${WORKER_PORT:-8100}
+      WORKER_EXECUTION_TIMEOUT_SECONDS: ${WORKER_EXECUTION_TIMEOUT_SECONDS:-10}
+      DOCKER_HOST: ${DOCKER_HOST:-unix:///var/run/docker.sock}
+    volumes:
+      # The worker launches isolated sibling containers per code-execution
+      # request via the host Docker daemon — see worker/README.md D-01 for
+      # why this is the one service in this stack with a socket mount, and
+      # what to use instead (gVisor/Firecracker/Kata) before this ever runs
+      # against untrusted, non-demo input.
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8100:8100"
+
+  orchestrator:
+    build: ./orchestrator
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://codefixer:codefixer@postgres:5432/codefixer}
+      WORKER_URL: http://worker:8100
+      INTEGRATION_BRIDGE_URL: http://integration-bridge:8080
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY before running docker compose up}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-nousresearch/hermes-3-llama-3.1-405b}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
+      LLM_FAILOVER_MAX_ATTEMPTS: ${LLM_FAILOVER_MAX_ATTEMPTS:-2}
+      LLM_FAILOVER_TIMEOUT_SECONDS: ${LLM_FAILOVER_TIMEOUT_SECONDS:-3.0}
+    ports:
+      - "8000:8000"
+
+  gateway:
+    build: ./gateway
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      orchestrator:
+        condition: service_started
+    environment:
+      GATEWAY_PORT: ${GATEWAY_PORT:-4000}
+      DATABASE_URL: ${DATABASE_URL:-postgres://codefixer:codefixer@postgres:5432/codefixer}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET before running docker compose up}
+      ORCHESTRATOR_URL: http://orchestrator:8000
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - gateway
+    ports:
+      - "5173:80"
+
+volumes:
+  codefixer_pgdata:

@@ -1,0 +1,555 @@
+/*
+ * NBP.pl visual identity tokens — CONTRACT.md section 8 / documentation
+ * §2.3. These three colors are the single source of truth for the palette;
+ * every component below reads from these custom properties instead of
+ * hardcoding hex values ad hoc.
+ */
+:root {
+  --color-navy: #002c5b; /* dominant, headers/nav/primary buttons */
+  --color-navy-light: #0a3d73;
+  --color-gold: #b59a57; /* highlights, callout borders, secondary headings */
+  --color-gold-light: #d4c391;
+  --color-bg: #fcfbfa; /* matte cream/light-gray page background */
+  --color-bg-panel: #ffffff;
+  --color-border: #d8d2c4;
+  --color-text: #1a1a1a;
+  --color-text-muted: #5a5a5a;
+  --color-danger: #7a1f2b;
+  --color-success: #1e5631;
+
+  --font-serif: "Playfair Display", "Georgia", "Times New Roman", serif;
+  --font-sans:
+    "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --border-thin: 1px solid var(--color-border);
+  --border-gold: 1px solid var(--color-gold);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3,
+.masthead {
+  font-family: var(--font-serif);
+  color: var(--color-navy);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+a {
+  color: var(--color-navy);
+}
+
+button {
+  font-family: inherit;
+}
+
+/* --- Layout shell --------------------------------------------------- */
+
+.app-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.masthead-bar {
+  background-color: var(--color-navy);
+  color: var(--color-bg);
+  border-bottom: 3px solid var(--color-gold);
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.masthead-bar .masthead {
+  color: var(--color-bg);
+  font-size: 1.35rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.masthead-seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-gold);
+  color: var(--color-gold);
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.masthead-subtitle {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  color: var(--color-gold-light);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 0.15rem;
+}
+
+.masthead-user {
+  font-size: 0.85rem;
+  color: var(--color-gold-light);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* --- Cards / panels (formal report aesthetic) ------------------------ */
+
+.card {
+  background-color: var(--color-bg-panel);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+}
+
+.card--gold-border {
+  border: var(--border-gold);
+}
+
+.card-title {
+  font-family: var(--font-serif);
+  color: var(--color-navy);
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: var(--border-thin);
+}
+
+/* --- Buttons ---------------------------------------------------------- */
+
+.btn {
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--color-navy);
+  color: var(--color-bg);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-navy-light);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border: 1px solid var(--color-gold);
+  color: var(--color-navy);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: rgba(181, 154, 87, 0.12);
+}
+
+/* --- Form controls ------------------------------------------------------ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field input,
+.field textarea,
+.field select {
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 2px rgba(181, 154, 87, 0.25);
+}
+
+.field select {
+  font-family: var(--font-sans);
+}
+
+.error-banner {
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+  background-color: rgba(122, 31, 43, 0.06);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.85rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+/* --- Login page --------------------------------------------------------- */
+
+.login-page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+}
+
+.login-hint {
+  margin-top: 1rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  border-top: var(--border-thin);
+  padding-top: 0.75rem;
+}
+
+/* --- Chat layout --------------------------------------------------------- */
+
+.chat-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+  min-height: 0;
+}
+
+@media (max-width: 860px) {
+  .chat-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chat-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+}
+
+.message-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 240px;
+  max-height: 55vh;
+}
+
+.message {
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.9rem;
+  border: var(--border-thin);
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message--user {
+  background-color: rgba(0, 44, 91, 0.05);
+  border-color: var(--color-navy);
+  align-self: flex-end;
+  max-width: 85%;
+}
+
+.message--assistant {
+  background-color: var(--color-bg-panel);
+  align-self: flex-start;
+  max-width: 85%;
+}
+
+.message--system {
+  border-style: dashed;
+  border-color: var(--color-gold);
+  background-color: rgba(181, 154, 87, 0.06);
+  align-self: center;
+  max-width: 95%;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.message-role {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-gold);
+  margin-bottom: 0.3rem;
+  display: block;
+}
+
+/* --- Status indicator ----------------------------------------------------- */
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background-color: var(--color-gold);
+  animation: status-pulse 1.4s ease-in-out infinite;
+}
+
+.status-dot--done {
+  background-color: var(--color-success);
+  animation: none;
+}
+
+.status-dot--error {
+  background-color: var(--color-danger);
+  animation: none;
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* --- Reasoning panel (US-02) ----------------------------------------------- */
+
+.reasoning-panel {
+  border: var(--border-gold);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-panel);
+}
+
+.reasoning-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.reasoning-panel-title {
+  font-family: var(--font-serif);
+  color: var(--color-navy);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reasoning-panel-chevron {
+  color: var(--color-gold);
+  font-size: 0.8rem;
+  transition: transform 0.15s ease;
+}
+
+.reasoning-panel-chevron--open {
+  transform: rotate(90deg);
+}
+
+.reasoning-panel-body {
+  border-top: var(--border-thin);
+  padding: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow-y: auto;
+  background-color: #fbfaf7;
+}
+
+.reasoning-panel-empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* --- Execution result card (US-03) ------------------------------------------ */
+
+.execution-result {
+  border-radius: var(--radius-md);
+  border: var(--border-thin);
+  overflow: hidden;
+}
+
+.execution-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.execution-result-header--success {
+  background-color: rgba(30, 86, 49, 0.1);
+  color: var(--color-success);
+}
+
+.execution-result-header--failure {
+  background-color: rgba(122, 31, 43, 0.08);
+  color: var(--color-danger);
+}
+
+.execution-result-body {
+  padding: 0.75rem 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.execution-result-stream {
+  margin: 0.35rem 0 0;
+  padding: 0.5rem;
+  background-color: #f4f2ec;
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.execution-result-meta {
+  display: flex;
+  gap: 1.25rem;
+  font-family: var(--font-sans);
+  color: var(--color-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+/* --- Failover notice --------------------------------------------------------- */
+
+.failover-notice {
+  border: 1px dashed var(--color-danger);
+  background-color: rgba(122, 31, 43, 0.05);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.8rem;
+  font-size: 0.78rem;
+  color: var(--color-danger);
+}
+
+/* --- Final fix block ---------------------------------------------------------- */
+
+.final-fix {
+  border: var(--border-gold);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.final-fix-header {
+  background-color: var(--color-navy);
+  color: var(--color-gold-light);
+  padding: 0.6rem 0.9rem;
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+}
+
+.final-fix-code {
+  margin: 0;
+  padding: 1rem;
+  background-color: #0d1b2a;
+  color: #e8e3d8;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.final-fix-explanation {
+  padding: 0.85rem 0.9rem;
+  font-size: 0.85rem;
+  border-top: var(--border-thin);
+  background-color: var(--color-bg-panel);
+}
+
+/* --- Chat input form ------------------------------------------------------------ */
+
+.chat-input-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.chat-input-row .field {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.footer-note {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  padding: 0.75rem 0 1.25rem;
+}

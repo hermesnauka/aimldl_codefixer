@@ -1,0 +1,9 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+docker==7.1.0
+# Not exact-pinned like the others: pydantic-core (pydantic's Rust extension)
+# only ships prebuilt wheels for recent CPython versions, and this repo has
+# been developed against more than one local Python interpreter version.
+# Any 2.10+ release is fine for this service; let pip pick one with an
+# available wheel for whatever interpreter is actually running it.
+pydantic>=2.10,<3
