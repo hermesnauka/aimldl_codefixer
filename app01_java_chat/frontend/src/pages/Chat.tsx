@@ -251,11 +251,13 @@ function ChatEventMessage({ event }: { event: ChatStreamEvent }) {
       return <FailoverNotice event={event} />;
     case "final_fix":
       return <FinalFixCard event={event} />;
+    case "session":
     case "status":
     case "reasoning_token":
     case "done":
-      // Rendered elsewhere (ReasoningPanel / StatusIndicator) or not
-      // user-facing on its own.
+      // "session" is consumed by the useEffect above to learn the
+      // Gateway-assigned sessionId; the rest are rendered elsewhere
+      // (ReasoningPanel / StatusIndicator) or not user-facing on their own.
       return null;
     case "error":
       return (
